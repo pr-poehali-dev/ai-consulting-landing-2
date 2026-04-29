@@ -94,14 +94,37 @@ function CaseCard({ c, index }: { c: typeof cases[0]; index: number }) {
   );
 }
 
+const SUBMIT_URL = "https://functions.poehali.dev/80f517e5-8955-4637-963c-aaa33de09bd0";
+
+type FormStatus = "idle" | "submitting" | "success" | "error";
+
 function ContactForm() {
   const { ref, visible } = useIntersection(0.1);
   const [form, setForm] = useState({ name: "", company: "", email: "", message: "" });
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<FormStatus>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    setStatus("submitting");
+    setErrorMsg("");
+    try {
+      const res = await fetch(SUBMIT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setStatus("success");
+      } else {
+        setStatus("error");
+        setErrorMsg(data.error || "Что-то пошло не так. Попробуйте ещё раз.");
+      }
+    } catch {
+      setStatus("error");
+      setErrorMsg("Ошибка соединения. Проверьте интернет и попробуйте снова.");
+    }
   };
 
   return (
@@ -141,17 +164,17 @@ function ContactForm() {
           </div>
 
           <div>
-            {sent ? (
+            {status === "success" ? (
               <div className="border border-[#FACC15] p-10 text-center">
                 <div className="font-display text-4xl text-[#FACC15] mb-3">ПОЛУЧИЛИ!</div>
-                <p className="font-body text-[#888] text-sm">Свяжемся с вами в течение 24 часов.</p>
+                <p className="font-body text-[#888] text-sm">Заявка принята, ответим в течение 24 часов.</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {[
                   { name: "name", placeholder: "Имя", type: "text" },
                   { name: "company", placeholder: "Компания", type: "text" },
-                  { name: "email", placeholder: "Email", type: "email" },
+                  { name: "email", placeholder: "Email *", type: "email" },
                 ].map((field) => (
                   <input
                     key={field.name}
@@ -159,22 +182,36 @@ function ContactForm() {
                     placeholder={field.placeholder}
                     value={form[field.name as keyof typeof form]}
                     onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
-                    className="w-full bg-transparent border border-[#2a2a2a] px-5 py-4 font-body text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#FACC15] transition-colors"
-                    required
+                    disabled={status === "submitting"}
+                    className="w-full bg-transparent border border-[#2a2a2a] px-5 py-4 font-body text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#FACC15] transition-colors disabled:opacity-50"
+                    required={field.name === "email"}
                   />
                 ))}
                 <textarea
                   placeholder="Опишите задачу или проект"
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  disabled={status === "submitting"}
                   rows={4}
-                  className="w-full bg-transparent border border-[#2a2a2a] px-5 py-4 font-body text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#FACC15] transition-colors resize-none"
+                  className="w-full bg-transparent border border-[#2a2a2a] px-5 py-4 font-body text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#FACC15] transition-colors resize-none disabled:opacity-50"
                 />
+                {status === "error" && (
+                  <p className="font-body text-xs text-red-400">{errorMsg}</p>
+                )}
                 <button
                   type="submit"
-                  className="mt-2 bg-[#FACC15] text-[#0F0F0F] font-body font-semibold text-sm tracking-wider uppercase px-8 py-4 hover:bg-white transition-colors duration-200"
+                  disabled={status === "submitting"}
+                  className="mt-2 bg-[#FACC15] text-[#0F0F0F] font-body font-semibold text-sm tracking-wider uppercase px-8 py-4 hover:bg-white transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Отправить заявку
+                  {status === "submitting" ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Отправляем...
+                    </>
+                  ) : "Отправить заявку"}
                 </button>
               </form>
             )}

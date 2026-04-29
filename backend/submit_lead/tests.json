@@ -1,0 +1,43 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Missing email returns 422",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "Test"},
+      "expectedStatus": 422,
+      "expectedBody": {"error": "Некорректный email"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Invalid email returns 422",
+      "method": "POST",
+      "path": "/",
+      "body": {"email": "not-an-email"},
+      "expectedStatus": 422,
+      "expectedBody": {"error": "Некорректный email"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Valid lead saved and notified",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Test User",
+        "email": "test@example.com",
+        "company": "Test Corp",
+        "task_type": "audit",
+        "message": "Тестовая заявка от системы"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
